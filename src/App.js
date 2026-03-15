@@ -13,6 +13,8 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { startTransition, useEffect, useState } from 'react';
+import NavigationBar from './components/NavigationBar';
+import { useAuth } from './contexts/AuthContext';
 
 ChartJS.register(
   ArcElement,
@@ -26,7 +28,10 @@ ChartJS.register(
   Filler,
 );
 
-const USER_ID = 'demo-user';
+const useAuthContext = () => {
+  const { user } = useAuth();
+  return user ? user.id : 'demo-user';
+};
 
 const moodboards = [
   { id: 'sunrise', title: 'Sunrise Reset', description: 'Теплый визуальный режим для мягких, но заметных предупреждений.' },
@@ -35,14 +40,14 @@ const moodboards = [
 ];
 
 const defaultSettings = {
-  user_id: USER_ID,
+  user_id: 'demo-user',
   notification_frequency_minutes: 30,
   moodboard: 'sunrise',
   site_limits: [],
 };
 
 const defaultStats = {
-  user_id: USER_ID,
+  user_id: 'demo-user',
   sites: [],
   recent_visits: [],
   totals: {
@@ -54,7 +59,7 @@ const defaultStats = {
 };
 
 const defaultGeneral = {
-  user_id: USER_ID,
+  user_id: 'demo-user',
   total_anxiety_level: 0,
   total_time_spent: 0,
   tracked_visits: 0,
@@ -116,6 +121,8 @@ function App() {
     url: 'https://news.example.com/article/123',
     time_spent: 840,
   });
+  const { user } = useAuth();
+  const USER_ID = useAuthContext();
 
   useEffect(() => {
     document.documentElement.dataset.moodboard = settings.moodboard;
@@ -123,7 +130,7 @@ function App() {
 
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, [USER_ID]);
 
   async function loadDashboard() {
     setLoading(true);
@@ -281,295 +288,298 @@ function App() {
   };
 
   return (
-    <main className="app-shell">
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">SafeMind Extension Console</p>
-          <h1>Мониторинг тревожности, лимитов и цифровой перегрузки в одном экране.</h1>
-          <p className="lede">
-            Zig backend считает прогнозы и хранит историю визитов, ML сервис с
-            Ollama классифицирует контент, а React интерфейс превращает это в
-            понятные сигналы для браузерного расширения.
-          </p>
-        </div>
-
-        <div className="hero-grid">
-          <article className="metric-card">
-            <span>Средняя тревожность</span>
-            <strong>{general.total_anxiety_level}%</strong>
-            <p>Интегральная оценка цифрового фона пользователя.</p>
-          </article>
-          <article className="metric-card">
-            <span>Экранное время</span>
-            <strong>{secondsToLabel(general.total_time_spent)}</strong>
-            <p>Суммарное время по отслеженным визитам.</p>
-          </article>
-          <article className="metric-card">
-            <span>Wellbeing score</span>
-            <strong>{general.wellbeing_score}/100</strong>
-            <p>Чем выше score, тем спокойнее общий паттерн поведения.</p>
-          </article>
-          <article className="metric-card accent">
-            <span>Риск лимита</span>
-            <strong>{stats.totals.alerting_sites}</strong>
-            <p>Столько доменов уже пересекли лимит.</p>
-          </article>
-        </div>
-      </section>
-
-      {redirectMessage ? (
-        <section className="break-banner" id="break-room">
-          <div>
-            <p className="section-label">SafeMind Break Room</p>
-            <h2>{redirectMessage}</h2>
-            <p>Сделайте короткую паузу, переключитесь на нейтральный контент или закройте вкладку на несколько минут.</p>
+    <>
+      <NavigationBar />
+      <main className="app-shell">
+        <section className="hero">
+          <div className="hero-copy">
+            <p className="eyebrow">SafeMind Extension Console</p>
+            <h1>Мониторинг тревожности, лимитов и цифровой перегрузки в одном экране.</h1>
+            <p className="lede">
+              Zig backend считает прогнозы и хранит историю визитов, ML сервис с
+              Ollama классифицирует контент, а React интерфейс превращает это в
+              понятные сигналы для браузерного расширения.
+            </p>
           </div>
-          <button type="button" onClick={() => setRedirectMessage('')}>
-            Вернуться к дашборду
-          </button>
+
+          <div className="hero-grid">
+            <article className="metric-card">
+              <span>Средняя тревожность</span>
+              <strong>{general.total_anxiety_level}%</strong>
+              <p>Интегральная оценка цифрового фона пользователя.</p>
+            </article>
+            <article className="metric-card">
+              <span>Экранное время</span>
+              <strong>{secondsToLabel(general.total_time_spent)}</strong>
+              <p>Суммарное время по отслеженным визитам.</p>
+            </article>
+            <article className="metric-card">
+              <span>Wellbeing score</span>
+              <strong>{general.wellbeing_score}/100</strong>
+              <p>Чем выше score, тем спокойнее общий паттерн поведения.</p>
+            </article>
+            <article className="metric-card accent">
+              <span>Риск лимита</span>
+              <strong>{stats.totals.alerting_sites}</strong>
+              <p>Столько доменов уже пересекли лимит.</p>
+            </article>
+          </div>
         </section>
-      ) : null}
 
-      {error ? <p className="error-banner">{error}</p> : null}
-
-      <section className="workspace">
-        <article className="panel">
-          <div className="panel-head">
-            <p className="section-label">Live Analysis</p>
-            <h2>Анализ текущей сессии</h2>
-          </div>
-
-          <form className="analyze-form" onSubmit={handleAnalyzeSubmit}>
-            <label>
-              URL
-              <input
-                value={siteForm.url}
-                onChange={(event) => setSiteForm((current) => ({ ...current, url: event.target.value }))}
-                placeholder="https://news.example.com/article"
-              />
-            </label>
-            <label>
-              Время на сайте, сек
-              <input
-                type="number"
-                min="0"
-                value={siteForm.time_spent}
-                onChange={(event) => setSiteForm((current) => ({ ...current, time_spent: event.target.value }))}
-              />
-            </label>
-            <button type="submit">Проанализировать</button>
-          </form>
-
-          <div className="analysis-grid">
-            <article className="insight-card">
-              <span>ML анализ</span>
-              <strong>{analysis ? `${analysis.anxiety_level}% • ${analysis.content_type}` : 'Ожидает запуска'}</strong>
-              <p>{analysis ? analysis.summary : 'SafeMind определит уровень тревожности и тип контента.'}</p>
-            </article>
-            <article className="insight-card">
-              <span>Прогноз времени</span>
-              <strong>{prediction ? secondsToLabel(prediction.predicted_time) : 'Нет прогноза'}</strong>
-              <p>{prediction ? prediction.recommendation : 'После анализа появится прогноз времени и совет.'}</p>
-            </article>
-          </div>
-        </article>
-
-        <article className="panel">
-          <div className="panel-head">
-            <p className="section-label">Behavior Summary</p>
-            <h2>Общий прогноз</h2>
-          </div>
-          <p className="summary-copy">{general.recommendation}</p>
-          <div className="focus-list">
-            {general.focus_sites.map((site) => (
-              <article className="focus-card" key={site.site}>
-                <div>
-                  <strong>{site.site}</strong>
-                  <span>{site.content_type}</span>
-                </div>
-                <p>{secondsToLabel(site.time_spent)}</p>
-                <mark className={`tone-${anxietyTone(site.anxiety_level)}`}>{site.anxiety_level}%</mark>
-              </article>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="charts-grid">
-        <article className="panel chart-panel">
-          <div className="panel-head">
-            <p className="section-label">Time Share</p>
-            <h2>Куда уходит внимание</h2>
-          </div>
-          {stats.sites.length ? <Doughnut data={doughnutData} options={{ plugins: { legend: { position: 'bottom' } } }} /> : <p className="empty-copy">Пока нет данных для диаграммы.</p>}
-        </article>
-
-        <article className="panel chart-panel">
-          <div className="panel-head">
-            <p className="section-label">Anxiety Map</p>
-            <h2>Тревожность по доменам</h2>
-          </div>
-          {stats.sites.length ? (
-            <Bar
-              data={barData}
-              options={{
-                plugins: { legend: { display: false } },
-                scales: { y: { min: 0, max: 100 } },
-              }}
-            />
-          ) : (
-            <p className="empty-copy">Сначала отправьте несколько анализов сайта.</p>
-          )}
-        </article>
-
-        <article className="panel chart-panel full-width">
-          <div className="panel-head">
-            <p className="section-label">Recent Sessions</p>
-            <h2>Последние визиты</h2>
-          </div>
-          {stats.recent_visits.length ? (
-            <Line
-              data={lineData}
-              options={{
-                plugins: { legend: { display: false } },
-                scales: {
-                  y: {
-                    title: { display: true, text: 'Минуты' },
-                  },
-                },
-              }}
-            />
-          ) : (
-            <p className="empty-copy">Линия появится после первых сохраненных сессий.</p>
-          )}
-        </article>
-      </section>
-
-      <section className="workspace">
-        <article className="panel">
-          <div className="panel-head">
-            <p className="section-label">Settings</p>
-            <h2>Лимиты и уведомления</h2>
-          </div>
-
-          <label className="settings-field">
-            Частота уведомлений, минут
-            <input
-              type="number"
-              min="5"
-              max="240"
-              value={settings.notification_frequency_minutes}
-              onChange={(event) =>
-                setSettings((current) => ({
-                  ...current,
-                  notification_frequency_minutes: Number(event.target.value),
-                }))
-              }
-            />
-          </label>
-
-          <div className="limit-editor">
-            <label>
-              Домен
-              <input
-                value={limitDraft.site}
-                onChange={(event) => setLimitDraft((current) => ({ ...current, site: event.target.value }))}
-                placeholder="news.example.com"
-              />
-            </label>
-            <label>
-              Лимит, сек
-              <input
-                type="number"
-                min="60"
-                value={limitDraft.time_limit_seconds}
-                onChange={(event) => setLimitDraft((current) => ({ ...current, time_limit_seconds: event.target.value }))}
-              />
-            </label>
-            <button type="button" onClick={addLimitDraft}>
-              Добавить лимит
+        {redirectMessage ? (
+          <section className="break-banner" id="break-room">
+            <div>
+              <p className="section-label">SafeMind Break Room</p>
+              <h2>{redirectMessage}</h2>
+              <p>Сделайте короткую паузу, переключитесь на нейтральный контент или закройте вкладку на несколько минут.</p>
+            </div>
+            <button type="button" onClick={() => setRedirectMessage('')}>
+              Вернуться к дашборду
             </button>
-          </div>
+          </section>
+        ) : null}
 
-          <div className="limit-list">
-            {settings.site_limits.map((limit) => (
-              <article className="limit-chip" key={limit.site}>
-                <div>
-                  <strong>{limit.site}</strong>
-                  <span>{secondsToLabel(limit.time_limit_seconds)}</span>
-                </div>
-                <button type="button" onClick={() => removeLimit(limit.site)}>
-                  Удалить
-                </button>
+        {error ? <p className="error-banner">{error}</p> : null}
+
+        <section className="workspace">
+          <article className="panel">
+            <div className="panel-head">
+              <p className="section-label">Live Analysis</p>
+              <h2>Анализ текущей сессии</h2>
+            </div>
+
+            <form className="analyze-form" onSubmit={handleAnalyzeSubmit}>
+              <label>
+                URL
+                <input
+                  value={siteForm.url}
+                  onChange={(event) => setSiteForm((current) => ({ ...current, url: event.target.value }))}
+                  placeholder="https://news.example.com/article"
+                />
+              </label>
+              <label>
+                Время на сайте, сек
+                <input
+                  type="number"
+                  min="0"
+                  value={siteForm.time_spent}
+                  onChange={(event) => setSiteForm((current) => ({ ...current, time_spent: event.target.value }))}
+                />
+              </label>
+              <button type="submit">Проанализировать</button>
+            </form>
+
+            <div className="analysis-grid">
+              <article className="insight-card">
+                <span>ML анализ</span>
+                <strong>{analysis ? `${analysis.anxiety_level}% • ${analysis.content_type}` : 'Ожидает запуска'}</strong>
+                <p>{analysis ? analysis.summary : 'SafeMind определит уровень тревожности и тип контента.'}</p>
               </article>
-            ))}
-          </div>
+              <article className="insight-card">
+                <span>Прогноз времени</span>
+                <strong>{prediction ? secondsToLabel(prediction.predicted_time) : 'Нет прогноза'}</strong>
+                <p>{prediction ? prediction.recommendation : 'После анализа появится прогноз времени и совет.'}</p>
+              </article>
+            </div>
+          </article>
 
-          <button className="primary-action" type="button" onClick={handleSaveSettings} disabled={savingSettings}>
-            {savingSettings ? 'Сохраняю...' : 'Сохранить настройки'}
-          </button>
-        </article>
+          <article className="panel">
+            <div className="panel-head">
+              <p className="section-label">Behavior Summary</p>
+              <h2>Общий прогноз</h2>
+            </div>
+            <p className="summary-copy">{general.recommendation}</p>
+            <div className="focus-list">
+              {general.focus_sites.map((site) => (
+                <article className="focus-card" key={site.site}>
+                  <div>
+                    <strong>{site.site}</strong>
+                    <span>{site.content_type}</span>
+                  </div>
+                  <p>{secondsToLabel(site.time_spent)}</p>
+                  <mark className={`tone-${anxietyTone(site.anxiety_level)}`}>{site.anxiety_level}%</mark>
+                </article>
+              ))}
+            </div>
+          </article>
+        </section>
 
-        <article className="panel">
-          <div className="panel-head">
-            <p className="section-label">Moodboard</p>
-            <h2>Оформление интерфейса</h2>
-          </div>
-          <div className="moodboard-list">
-            {moodboards.map((moodboard) => (
-              <button
-                type="button"
-                key={moodboard.id}
-                className={`moodboard-card ${settings.moodboard === moodboard.id ? 'is-active' : ''}`}
-                onClick={() => setSettings((current) => ({ ...current, moodboard: moodboard.id }))}
-              >
-                <strong>{moodboard.title}</strong>
-                <span>{moodboard.description}</span>
+        <section className="charts-grid">
+          <article className="panel chart-panel">
+            <div className="panel-head">
+              <p className="section-label">Time Share</p>
+              <h2>Куда уходит внимание</h2>
+            </div>
+            {stats.sites.length ? <Doughnut data={doughnutData} options={{ plugins: { legend: { position: 'bottom' } } }} /> : <p className="empty-copy">Пока нет данных для диаграммы.</p>}
+          </article>
+
+          <article className="panel chart-panel">
+            <div className="panel-head">
+              <p className="section-label">Anxiety Map</p>
+              <h2>Тревожность по доменам</h2>
+            </div>
+            {stats.sites.length ? (
+              <Bar
+                data={barData}
+                options={{
+                  plugins: { legend: { display: false } },
+                  scales: { y: { min: 0, max: 100 } },
+                }}
+              />
+            ) : (
+              <p className="empty-copy">Сначала отправьте несколько анализов сайта.</p>
+            )}
+          </article>
+
+          <article className="panel chart-panel full-width">
+            <div className="panel-head">
+              <p className="section-label">Recent Sessions</p>
+              <h2>Последние визиты</h2>
+            </div>
+            {stats.recent_visits.length ? (
+              <Line
+                data={lineData}
+                options={{
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: {
+                      title: { display: true, text: 'Минуты' },
+                    },
+                  },
+                }}
+              />
+            ) : (
+              <p className="empty-copy">Линия появится после первых сохраненных сессий.</p>
+            )}
+          </article>
+        </section>
+
+        <section className="workspace">
+          <article className="panel">
+            <div className="panel-head">
+              <p className="section-label">Settings</p>
+              <h2>Лимиты и уведомления</h2>
+            </div>
+
+            <label className="settings-field">
+              Частота уведомлений, минут
+              <input
+                type="number"
+                min="5"
+                max="240"
+                value={settings.notification_frequency_minutes}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    notification_frequency_minutes: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <div className="limit-editor">
+              <label>
+                Домен
+                <input
+                  value={limitDraft.site}
+                  onChange={(event) => setLimitDraft((current) => ({ ...current, site: event.target.value }))}
+                  placeholder="news.example.com"
+                />
+              </label>
+              <label>
+                Лимит, сек
+                <input
+                  type="number"
+                  min="60"
+                  value={limitDraft.time_limit_seconds}
+                  onChange={(event) => setLimitDraft((current) => ({ ...current, time_limit_seconds: event.target.value }))}
+                />
+              </label>
+              <button type="button" onClick={addLimitDraft}>
+                Добавить лимит
               </button>
-            ))}
-          </div>
-        </article>
-      </section>
+            </div>
 
-      <section className="panel table-panel">
-        <div className="panel-head">
-          <p className="section-label">Tracked Sites</p>
-          <h2>Статистика по сайтам</h2>
-        </div>
-        {loading ? (
-          <p className="empty-copy">Загружаю SafeMind дашборд...</p>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Сайт</th>
-                  <th>Время</th>
-                  <th>Тревожность</th>
-                  <th>Визиты</th>
-                  <th>Тип</th>
-                  <th>Лимит</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.sites.map((site) => (
-                  <tr key={site.site}>
-                    <td>{site.site}</td>
-                    <td>{secondsToLabel(site.time_spent)}</td>
-                    <td>
-                      <span className={`anxiety-pill ${anxietyTone(site.anxiety_level)}`}>{site.anxiety_level}%</span>
-                    </td>
-                    <td>{site.visits}</td>
-                    <td>{site.content_type}</td>
-                    <td>{site.recommended_limit ? secondsToLabel(site.recommended_limit) : 'Не задан'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="limit-list">
+              {settings.site_limits.map((limit) => (
+                <article className="limit-chip" key={limit.site}>
+                  <div>
+                    <strong>{limit.site}</strong>
+                    <span>{secondsToLabel(limit.time_limit_seconds)}</span>
+                  </div>
+                  <button type="button" onClick={() => removeLimit(limit.site)}>
+                    Удалить
+                  </button>
+                </article>
+              ))}
+            </div>
+
+            <button className="primary-action" type="button" onClick={handleSaveSettings} disabled={savingSettings}>
+              {savingSettings ? 'Сохраняю...' : 'Сохранить настройки'}
+            </button>
+          </article>
+
+          <article className="panel">
+            <div className="panel-head">
+              <p className="section-label">Moodboard</p>
+              <h2>Оформление интерфейса</h2>
+            </div>
+            <div className="moodboard-list">
+              {moodboards.map((moodboard) => (
+                <button
+                  type="button"
+                  key={moodboard.id}
+                  className={`moodboard-card ${settings.moodboard === moodboard.id ? 'is-active' : ''}`}
+                  onClick={() => setSettings((current) => ({ ...current, moodboard: moodboard.id }))}
+                >
+                  <strong>{moodboard.title}</strong>
+                  <span>{moodboard.description}</span>
+                </button>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <section className="panel table-panel">
+          <div className="panel-head">
+            <p className="section-label">Tracked Sites</p>
+            <h2>Статистика по сайтам</h2>
           </div>
-        )}
-      </section>
-    </main>
+          {loading ? (
+            <p className="empty-copy">Загружаю SafeMind дашборд...</p>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Сайт</th>
+                    <th>Время</th>
+                    <th>Тревожность</th>
+                    <th>Визиты</th>
+                    <th>Тип</th>
+                    <th>Лимит</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.sites.map((site) => (
+                    <tr key={site.site}>
+                      <td>{site.site}</td>
+                      <td>{secondsToLabel(site.time_spent)}</td>
+                      <td>
+                        <span className={`anxiety-pill ${anxietyTone(site.anxiety_level)}`}>{site.anxiety_level}%</span>
+                      </td>
+                      <td>{site.visits}</td>
+                      <td>{site.content_type}</td>
+                      <td>{site.recommended_limit ? secondsToLabel(site.recommended_limit) : 'Не задан'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </main>
+    </>
   );
 }
 

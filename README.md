@@ -1,15 +1,52 @@
-# Frontend
+# SafeMind Frontend
 
-React frontend for the hackathon template.
+Frontend часть приложения SafeMind с аутентификацией через JWT токены.
 
-## Available scripts
+## Структура проекта
 
-- `npm start`: run the development server on port `3000`
-- `npm run build`: create the production build used by the nginx container
-- `npm test`: run the component tests
+### Основные файлы
+- `src/App.js` - Главный компонент приложения
+- `src/AppRouter.js` - Маршрутизация приложения
+- `src/index.js` - Точка входа в приложение
+- `src/config.js` - Конфигурация API и JWT
 
-## Runtime expectations
+### Компоненты (`src/components/`)
+- `LoginForm.js` - Форма входа в систему
+- `LoginForm.css` - Стили формы входа
+- `RegisterForm.js` - Форма регистрации
+- `RegisterForm.css` - Стили формы регистрации
+- `NavigationBar.js` - Навигационная панель
+- `NavigationBar.css` - Стили навигационной панели
+- `ProtectedRoute.js` - Защита маршрутов
+- `LoadingScreen.js` - Экран загрузки
+- `LoadingScreen.css` - Стили экрана загрузки
+- `Dashboard.js` - Главный дашборд
+- `Dashboard.css` - Стили дашборда
 
-- The UI expects the backend behind `/api`
-- The UI expects the ML service behind `/ml`
-- In Docker Compose those routes are provided by Traefik on `http://app.localhost`
+### Контексты (`src/contexts/`)
+- `AuthContext.js` - Контекст аутентификации
+
+### Сервисы (`src/services/`)
+- `authService.js` - Сервис аутентификации
+
+## Функциональность
+
+### Аутентификация
+- Регистрация пользователей
+- Вход в систему
+- Автоматическое обновление JWT токенов
+- Защита маршрутов
+- Хранение данных пользователя в localStorage
+
+### Особенности
+- JWT токены с автоматическим обновлением
+- Централизованное управление состоянием аутентификации
+- Защита маршрутов для неавторизованных пользователей
+- Красивый UI с анимациями
+- Адаптивный дизайн
+
+## Зависимости
+- React 19.2.4
+- React Router DOM
+- Chart.js для графиков
+- react-chartjs-2 для интеграции с React
