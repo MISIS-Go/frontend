@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './RegisterForm.css';
 
-const RegisterForm = ({ onSwitchToLogin }) => {
+const RegisterForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const { register, loading, error, clearError } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,7 +18,10 @@ const RegisterForm = ({ onSwitchToLogin }) => {
       return;
     }
 
-    await register(email, password, displayName);
+    const result = await register(email, password, displayName);
+    if (result.success) {
+      navigate('/', { replace: true });
+    }
   };
 
   const validatePassword = (password) => {
@@ -117,7 +122,7 @@ const RegisterForm = ({ onSwitchToLogin }) => {
             <button 
               type="button" 
               className="switch-link"
-              onClick={onSwitchToLogin}
+              onClick={() => navigate('/login')}
             >
               Войти
             </button>

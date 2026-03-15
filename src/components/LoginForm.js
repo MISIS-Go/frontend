@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './LoginForm.css';
 
-const LoginForm = ({ onSwitchToRegister }) => {
+const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading, error, clearError } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,7 +18,10 @@ const LoginForm = ({ onSwitchToRegister }) => {
       return;
     }
 
-    await login(email, password);
+    const result = await login(email, password);
+    if (result.success) {
+      navigate(location.state?.from?.pathname || '/', { replace: true });
+    }
   };
 
   return (
@@ -72,7 +78,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
             <button 
               type="button" 
               className="switch-link"
-              onClick={onSwitchToRegister}
+              onClick={() => navigate('/register')}
             >
               Зарегистрироваться
             </button>

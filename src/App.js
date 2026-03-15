@@ -12,9 +12,10 @@ import {
   Tooltip,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { startTransition, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import NavigationBar from './components/NavigationBar';
 import { useAuth } from './contexts/AuthContext';
+import { authService } from './services/authService';
 
 ChartJS.register(
   ArcElement,
@@ -27,11 +28,6 @@ ChartJS.register(
   Legend,
   Filler,
 );
-
-const useAuthContext = () => {
-  const { user } = useAuth();
-  return user ? user.id : 'demo-user';
-};
 
 const moodboards = [
   { id: 'sunrise', title: 'Sunrise Reset', description: 'Теплый визуальный режим для мягких, но заметных предупреждений.' },
@@ -84,26 +80,36 @@ function anxietyTone(value) {
 }
 
 async function api(path, options) {
+  const token = authService.getToken();
   const response = await fetch(path, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options?.headers ?? {}),
     },
     ...options,
   });
 
+  const raw = await response.text();
+  let payload = {};
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch (error) {
+      if (!response.ok) {
+        throw new Error(raw);
+      }
+      throw new Error('Backend returned a non-JSON response');
+    }
+  }
+
   if (!response.ok) {
     let message = 'Request failed';
-    try {
-      const payload = await response.json();
-      message = payload.error || message;
-    } catch (error) {
-      message = response.statusText || message;
-    }
+    message = payload.error || response.statusText || message;
     throw new Error(message);
   }
 
-  return response.json();
+  return payload;
 }
 
 function App() {
@@ -122,17 +128,13 @@ function App() {
     time_spent: 840,
   });
   const { user } = useAuth();
-  const USER_ID = useAuthContext();
+  const USER_ID = user?.id ?? 'demo-user';
 
   useEffect(() => {
     document.documentElement.dataset.moodboard = settings.moodboard;
   }, [settings.moodboard]);
 
-  useEffect(() => {
-    loadDashboard();
-  }, [USER_ID]);
-
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -159,7 +161,11 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [USER_ID]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   async function handleAnalyzeSubmit(event) {
     event.preventDefault();
@@ -292,17 +298,106 @@ function App() {
       <NavigationBar />
       <main className="app-shell">
         <section className="hero">
-          <div className="hero-copy">
-            <p className="eyebrow">SafeMind Extension Console</p>
-            <h1>Мониторинг тревожности, лимитов и цифровой перегрузки в одном экране.</h1>
-            <p className="lede">
-              Zig backend считает прогнозы и хранит историю визитов, ML сервис с
-              Ollama классифицирует контент, а React интерфейс превращает это в
-              понятные сигналы для браузерного расширения.
-            </p>
+          <div className="hero-navline">
+            <img src="/03/div.header__row.jpg" alt="Навигация SafeMind" className="header-row-image" />
           </div>
 
-          <div className="hero-grid">
+          <div className="hero-copy">
+            <p className="eyebrow">SafeMind</p>
+            <h1>Интерфейс цифровой гигиены для людей, которым важно, что делает с ними контент.</h1>
+          </div>
+
+          <div className="hero-editorial">
+            <article className="editorial-card">
+              <p className="section-label">Настрой заботу о пространстве, в котором ты живешь каждый день</p>
+              <p className="lede">
+                SafeMind собирает пользовательскую статистику, определяет тревожность контента, прогнозирует
+                перегрузку и возвращает человеку ощущение контроля над цифровой средой.
+              </p>
+              <button type="button" onClick={() => window.location.hash = 'analytics'}>
+                Смотреть аналитику
+              </button>
+            </article>
+
+            <article className="hero-art">
+              <img src="/03/main.teaching-page.jpg" alt="Референс страницы SafeMind" className="hero-reference-image" />
+            </article>
+          </div>
+
+          <blockquote className="hero-quote">
+            <span className="quote-mark">“</span>
+            <p>
+              Плохой не ты, где заканчивается дизайн.
+              <br />
+              Он здесь, в трёх дубовых окнах перед рабочим окном.
+            </p>
+            <span className="quote-mark">”</span>
+          </blockquote>
+
+          <section className="manifesto">
+            <div className="manifesto-illustration">
+              <img src="/03/div.section-1.jpg" alt="Витрина центра" className="manifesto-image" />
+            </div>
+            <div className="manifesto-copy">
+              <p className="section-label">SafeMind</p>
+              <h2>Инструмент для людей, если бурлит.</h2>
+              <p className="summary-copy">
+                Интерфейс объединяет backend на Go, ML-анализ тревожности и компактную визуализацию, чтобы пользователь
+                видел не просто цифры, а собственный ритм, уровень давления и области, где стоит замедлиться.
+              </p>
+              <div className="profile-strip">
+                <article className="profile-card">
+                  <span>Пользователь</span>
+                  <strong>{user?.display_name || 'Demo User'}</strong>
+                  <p>{user?.email || 'Локальный demo-режим без авторизации'}</p>
+                </article>
+                <article className="profile-card">
+                  <span>Отслеживаемые сайты</span>
+                  <strong>{stats.totals.tracked_sites}</strong>
+                  <p>Уникальные домены в пользовательской статистике.</p>
+                </article>
+                <article className="profile-card">
+                  <span>Сохраненные визиты</span>
+                  <strong>{general.tracked_visits}</strong>
+                  <p>История поведения, на которой строятся рекомендации.</p>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <section className="moodboard-showcase" id="moodboard">
+            <div className="panel-head center">
+              <p className="section-label">Выберите свою среду</p>
+              <h2>Подберите атмосферу интерфейса</h2>
+            </div>
+            <div className="reference-strip">
+              <img src="/03/div.section.jpg" alt="Референс карточек и событий" className="reference-strip-image" />
+            </div>
+            <div className="moodboard-gallery">
+              {moodboards.map((moodboard) => (
+                <button
+                  type="button"
+                  key={moodboard.id}
+                  className={`moodboard-orb ${settings.moodboard === moodboard.id ? 'is-active' : ''}`}
+                  onClick={() => setSettings((current) => ({ ...current, moodboard: moodboard.id }))}
+                >
+                  <span className={`orb-visual orb-${moodboard.id}`} />
+                  <strong>{moodboard.title}</strong>
+                  <small>{moodboard.description}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="reference-column">
+            <div className="panel-head center">
+              <p className="section-label">Фрагменты интерфейса</p>
+              <h2>Детали из визуальной системы</h2>
+            </div>
+            <img src="/03/component-3.jpg" alt="Декоративный фрагмент интерфейса" className="reference-column-image" />
+          </section>
+
+          <div className="hero-grid" id="analytics">
             <article className="metric-card">
               <span>Средняя тревожность</span>
               <strong>{general.total_anxiety_level}%</strong>

@@ -9,7 +9,7 @@ const NavigationBar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (
@@ -38,15 +38,21 @@ const NavigationBar = () => {
             <div className="auth-links">
               <button 
                 className="nav-btn"
-                onClick={() => navigate('/login')}
+                onClick={() => {
+                  navigate('/');
+                  window.location.hash = 'analytics';
+                }}
               >
-                Войти
+                Аналитика
               </button>
               <button 
                 className="nav-btn primary"
-                onClick={() => navigate('/register')}
+                onClick={() => {
+                  navigate('/');
+                  window.location.hash = 'moodboard';
+                }}
               >
-                Регистрация
+                Moodboard
               </button>
             </div>
           )}

@@ -3,18 +3,22 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background:
+    radial-gradient(circle at top left, rgba(244, 188, 121, 0.24), transparent 20%),
+    radial-gradient(circle at top right, rgba(161, 191, 255, 0.24), transparent 22%),
+    linear-gradient(180deg, #fbf7f2 0%, #f7f1e8 52%, #f2ece3 100%);
   padding: 20px;
 }
 
 .auth-form-card {
-  background: white;
+  background: rgba(255, 252, 248, 0.92);
   padding: 40px;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 18px 48px rgba(81, 61, 45, 0.12);
   width: 100%;
   max-width: 400px;
   animation: slideUp 0.3s ease-out;
+  border: 1px solid rgba(111, 88, 66, 0.12);
 }
 
 @keyframes slideUp {
@@ -35,14 +39,14 @@
 
 .auth-form-header h2 {
   margin: 0 0 8px 0;
-  color: #333;
+  color: #2b2017;
   font-size: 24px;
   font-weight: 600;
 }
 
 .auth-form-header p {
   margin: 0;
-  color: #666;
+  color: rgba(43, 32, 23, 0.68);
   font-size: 14px;
 }
 
@@ -61,21 +65,22 @@
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: #555;
+  color: #5a4739;
 }
 
 .form-group input {
   padding: 12px 16px;
-  border: 2px solid #e1e5e9;
+  border: 1px solid rgba(111, 88, 66, 0.18);
   border-radius: 8px;
   font-size: 16px;
   transition: all 0.2s ease;
   outline: none;
+  background: rgba(255, 255, 255, 0.78);
 }
 
 .form-group input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #9e7046;
+  box-shadow: 0 0 0 3px rgba(158, 112, 70, 0.1);
 }
 
 .form-group input::placeholder {
@@ -98,7 +103,7 @@
 }
 
 .auth-submit-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #9e7046 0%, #d1a56d 100%);
   color: white;
   border: none;
   padding: 14px;
@@ -113,7 +118,7 @@
 
 .auth-submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 20px rgba(158, 112, 70, 0.24);
 }
 
 .auth-submit-btn:disabled {
@@ -125,14 +130,14 @@
 .auth-switch {
   text-align: center;
   margin-top: 10px;
-  color: #666;
+  color: rgba(43, 32, 23, 0.68);
   font-size: 14px;
 }
 
 .switch-link {
   background: none;
   border: none;
-  color: #667eea;
+  color: #9e7046;
   text-decoration: none;
   font-weight: 600;
   cursor: pointer;
