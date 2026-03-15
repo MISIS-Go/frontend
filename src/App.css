@@ -1,38 +1,114 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+.app-shell {
   min-height: 100vh;
+  color: #f2efe8;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  gap: 3rem;
+  padding: 4rem 1.5rem 5rem;
+  box-sizing: border-box;
 }
 
-.App-link {
-  color: #61dafb;
+.hero,
+.board {
+  width: min(1120px, 100%);
+  margin: 0 auto;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+.hero {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.eyebrow,
+.section-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #ffb380;
+  font-size: 0.82rem;
+}
+
+.hero h1,
+.board h2 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  line-height: 0.94;
+  letter-spacing: -0.05em;
+}
+
+.board h2 {
+  max-width: 14ch;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.lede,
+.board-copy p:last-child {
+  margin: 0;
+  max-width: 52rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: rgba(242, 239, 232, 0.82);
+}
+
+.hero-grid,
+.idea-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.hero-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.status-card,
+.idea-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 21, 38, 0.75);
+  backdrop-filter: blur(18px);
+  border-radius: 1.5rem;
+  padding: 1.25rem;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+}
+
+.status-card span,
+.idea-card p {
+  display: block;
+  margin: 0 0 0.7rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(242, 239, 232, 0.56);
+}
+
+.status-card strong,
+.idea-card h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.45;
+}
+
+.status-card.accent {
+  background: linear-gradient(135deg, rgba(249, 124, 82, 0.35), rgba(50, 111, 255, 0.28));
+}
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.idea-list {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.idea-card h3 {
+  font-size: 1.35rem;
+}
+
+@media (max-width: 800px) {
+  .board {
+    grid-template-columns: 1fr;
   }
 }
