@@ -320,7 +320,10 @@ function App() {
             </article>
 
             <article className="hero-art">
-              <img src="/03/main.teaching-page.jpg" alt="Референс страницы SafeMind" className="hero-reference-image" />
+              <div className="hero-collage">
+                <img src="/03/div.section-1.jpg" alt="Фрагмент пространства SafeMind" className="hero-collage-main" />
+                <img src="/03/div.section.jpg" alt="Карточки и события SafeMind" className="hero-collage-side" />
+              </div>
             </article>
           </div>
 
