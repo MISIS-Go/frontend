@@ -4,9 +4,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background:
-    radial-gradient(circle at top left, rgba(240, 107, 68, 0.32), transparent 28%),
-    radial-gradient(circle at 80% 10%, rgba(57, 107, 255, 0.26), transparent 24%),
-    linear-gradient(180deg, #0b1020 0%, #141828 48%, #17131c 100%);
+    radial-gradient(circle at top left, rgba(244, 188, 121, 0.22), transparent 18%),
+    radial-gradient(circle at top right, rgba(161, 191, 255, 0.24), transparent 20%),
+    linear-gradient(180deg, #fbf7f2 0%, #f7f1e8 52%, #f2ece3 100%);
+  color: #2b2017;
 }
 
 code {

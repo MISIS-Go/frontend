@@ -1,44 +1,24 @@
 import './App.css';
-import {
-  ArcElement,
-  BarElement,
-  CategoryScale,
-  Chart as ChartJS,
-  Filler,
-  Legend,
-  LineElement,
-  LinearScale,
-  PointElement,
-  Tooltip,
-} from 'chart.js';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { startTransition, useCallback, useEffect, useState } from 'react';
+import { lazy, startTransition, Suspense, useCallback, useEffect, useState } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 import NavigationBar from './components/NavigationBar';
 import { useAuth } from './contexts/AuthContext';
 import { authService } from './services/authService';
-
-ChartJS.register(
-  ArcElement,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Tooltip,
-  Legend,
-  Filler,
-);
+const DashboardSections = lazy(() => import('./components/DashboardSections'));
 
 const moodboards = [
-  { id: 'sunrise', title: 'Sunrise Reset', description: 'Теплый визуальный режим для мягких, но заметных предупреждений.' },
-  { id: 'forest', title: 'Forest Focus', description: 'Спокойная палитра для восстановления и длинной концентрации.' },
-  { id: 'paper', title: 'Paper Quiet', description: 'Светлая нейтральная тема для ненавязчивого мониторинга.' },
+  { id: 'aqua-haze', title: 'Акварельная дымка', theme: 'aqua-haze', visual: 'aqua-haze' },
+  { id: 'retro-future', title: 'Ретро футуризм', theme: 'retro-future', visual: 'retro-future' },
+  { id: 'rain-garden', title: 'Меланхоличный ливень', theme: 'rain-garden', visual: 'rain-garden' },
+  { id: 'cat-day', title: 'Кошачий день', theme: 'cat-day', visual: 'cat-day' },
+  { id: 'cosmic-trip', title: 'Космическая одиссея', theme: 'cosmic-trip', visual: 'cosmic-trip' },
+  { id: 'botanic-dream', title: 'Ботанический сон', theme: 'botanic-dream', visual: 'botanic-dream' },
 ];
 
 const defaultSettings = {
   user_id: 'demo-user',
   notification_frequency_minutes: 30,
-  moodboard: 'sunrise',
+  moodboard: 'retro-future',
   site_limits: [],
 };
 
@@ -71,12 +51,6 @@ function secondsToLabel(value) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return remainder ? `${hours} ч ${remainder} мин` : `${hours} ч`;
-}
-
-function anxietyTone(value) {
-  if (value >= 75) return 'high';
-  if (value >= 55) return 'medium';
-  return 'low';
 }
 
 async function api(path, options) {
@@ -252,79 +226,16 @@ function App() {
     }));
   }
 
-  const doughnutData = {
-    labels: stats.sites.map((site) => site.site),
-    datasets: [
-      {
-        data: stats.sites.map((site) => site.time_spent),
-        backgroundColor: ['#ff8f5a', '#f4c95d', '#78c6a3', '#5f87ff', '#cf8dfc', '#ff6f91'],
-        borderWidth: 0,
-      },
-    ],
-  };
-
-  const barData = {
-    labels: stats.sites.map((site) => site.site),
-    datasets: [
-      {
-        data: stats.sites.map((site) => site.anxiety_level),
-        backgroundColor: stats.sites.map((site) => {
-          const tone = anxietyTone(site.anxiety_level);
-          if (tone === 'high') return '#ff6b6b';
-          if (tone === 'medium') return '#f6ad55';
-          return '#57c39a';
-        }),
-        borderRadius: 12,
-      },
-    ],
-  };
-
-  const lineData = {
-    labels: [...stats.recent_visits].reverse().map((visit) => visit.site),
-    datasets: [
-      {
-        label: 'Последние сессии',
-        data: [...stats.recent_visits].reverse().map((visit) => Math.round(visit.time_spent / 60)),
-        borderColor: '#5f87ff',
-        backgroundColor: 'rgba(95, 135, 255, 0.18)',
-        tension: 0.35,
-        fill: true,
-      },
-    ],
-  };
-
   return (
     <>
       <NavigationBar />
       <main className="app-shell">
         <section className="hero">
-          <div className="hero-navline">
-            <img src="/03/div.header__row.jpg" alt="Навигация SafeMind" className="header-row-image" />
-          </div>
-
           <div className="hero-copy">
-            <p className="eyebrow">SafeMind</p>
-            <h1>Интерфейс цифровой гигиены для людей, которым важно, что делает с ними контент.</h1>
-          </div>
-
-          <div className="hero-editorial">
-            <article className="editorial-card">
-              <p className="section-label">Настрой заботу о пространстве, в котором ты живешь каждый день</p>
-              <p className="lede">
-                SafeMind собирает пользовательскую статистику, определяет тревожность контента, прогнозирует
-                перегрузку и возвращает человеку ощущение контроля над цифровой средой.
-              </p>
-              <button type="button" onClick={() => window.location.hash = 'analytics'}>
-                Смотреть аналитику
-              </button>
-            </article>
-
-            <article className="hero-art">
-              <div className="hero-collage">
-                <img src="/03/div.section-1.jpg" alt="Фрагмент пространства SafeMind" className="hero-collage-main" />
-                <img src="/03/div.section.jpg" alt="Карточки и события SafeMind" className="hero-collage-side" />
-              </div>
-            </article>
+            <h1>
+              <span className="hero-line hero-line-wide">Интерфейс цифровой гигиены для людей, которым важно,</span>
+              <span className="hero-line">что делает с ними контент.</span>
+            </h1>
           </div>
 
           <blockquote className="hero-quote">
@@ -337,67 +248,37 @@ function App() {
             <span className="quote-mark">”</span>
           </blockquote>
 
-          <section className="manifesto">
-            <div className="manifesto-illustration">
-              <img src="/03/div.section-1.jpg" alt="Витрина центра" className="manifesto-image" />
-            </div>
-            <div className="manifesto-copy">
-              <p className="section-label">SafeMind</p>
-              <h2>Инструмент для людей, если бурлит.</h2>
-              <p className="summary-copy">
-                Интерфейс объединяет backend на Go, ML-анализ тревожности и компактную визуализацию, чтобы пользователь
-                видел не просто цифры, а собственный ритм, уровень давления и области, где стоит замедлиться.
+          <div className="hero-editorial">
+            <article className="editorial-card">
+              <p className="section-label">Настрой заботу о пространстве, в котором ты живешь каждый день</p>
+              <p className="lede">
+                SafeMind собирает пользовательскую статистику, определяет тревожность контента, прогнозирует
+                перегрузку и возвращает человеку ощущение контроля над цифровой средой.
               </p>
-              <div className="profile-strip">
-                <article className="profile-card">
-                  <span>Пользователь</span>
-                  <strong>{user?.display_name || 'Demo User'}</strong>
-                  <p>{user?.email || 'Локальный demo-режим без авторизации'}</p>
-                </article>
-                <article className="profile-card">
-                  <span>Отслеживаемые сайты</span>
-                  <strong>{stats.totals.tracked_sites}</strong>
-                  <p>Уникальные домены в пользовательской статистике.</p>
-                </article>
-                <article className="profile-card">
-                  <span>Сохраненные визиты</span>
-                  <strong>{general.tracked_visits}</strong>
-                  <p>История поведения, на которой строятся рекомендации.</p>
-                </article>
-              </div>
-            </div>
-          </section>
+              <button type="button" onClick={() => window.location.hash = 'analytics'}>
+                Смотреть аналитику
+              </button>
+            </article>
+          </div>
 
           <section className="moodboard-showcase" id="moodboard">
             <div className="panel-head center">
-              <p className="section-label">Выберите свою среду</p>
-              <h2>Подберите атмосферу интерфейса</h2>
-            </div>
-            <div className="reference-strip">
-              <img src="/03/div.section.jpg" alt="Референс карточек и событий" className="reference-strip-image" />
+              <p className="section-label">Выберите свою тему</p>
+              <h2>Выберите свою тему</h2>
             </div>
             <div className="moodboard-gallery">
               {moodboards.map((moodboard) => (
                 <button
                   type="button"
                   key={moodboard.id}
-                  className={`moodboard-orb ${settings.moodboard === moodboard.id ? 'is-active' : ''}`}
-                  onClick={() => setSettings((current) => ({ ...current, moodboard: moodboard.id }))}
+                  className={`theme-object ${settings.moodboard === moodboard.theme ? 'is-active' : ''}`}
+                  onClick={() => setSettings((current) => ({ ...current, moodboard: moodboard.theme }))}
                 >
-                  <span className={`orb-visual orb-${moodboard.id}`} />
+                  <span className={`theme-object-visual theme-${moodboard.visual}`} />
                   <strong>{moodboard.title}</strong>
-                  <small>{moodboard.description}</small>
                 </button>
               ))}
             </div>
-          </section>
-
-          <section className="reference-column">
-            <div className="panel-head center">
-              <p className="section-label">Фрагменты интерфейса</p>
-              <h2>Детали из визуальной системы</h2>
-            </div>
-            <img src="/03/component-3.jpg" alt="Декоративный фрагмент интерфейса" className="reference-column-image" />
           </section>
 
           <div className="hero-grid" id="analytics">
@@ -424,258 +305,55 @@ function App() {
           </div>
         </section>
 
-        {redirectMessage ? (
-          <section className="break-banner" id="break-room">
-            <div>
-              <p className="section-label">SafeMind Break Room</p>
-              <h2>{redirectMessage}</h2>
-              <p>Сделайте короткую паузу, переключитесь на нейтральный контент или закройте вкладку на несколько минут.</p>
-            </div>
-            <button type="button" onClick={() => setRedirectMessage('')}>
-              Вернуться к дашборду
-            </button>
-          </section>
-        ) : null}
-
-        {error ? <p className="error-banner">{error}</p> : null}
-
-        <section className="workspace">
-          <article className="panel">
-            <div className="panel-head">
-              <p className="section-label">Live Analysis</p>
-              <h2>Анализ текущей сессии</h2>
-            </div>
-
-            <form className="analyze-form" onSubmit={handleAnalyzeSubmit}>
-              <label>
-                URL
-                <input
-                  value={siteForm.url}
-                  onChange={(event) => setSiteForm((current) => ({ ...current, url: event.target.value }))}
-                  placeholder="https://news.example.com/article"
-                />
-              </label>
-              <label>
-                Время на сайте, сек
-                <input
-                  type="number"
-                  min="0"
-                  value={siteForm.time_spent}
-                  onChange={(event) => setSiteForm((current) => ({ ...current, time_spent: event.target.value }))}
-                />
-              </label>
-              <button type="submit">Проанализировать</button>
-            </form>
-
-            <div className="analysis-grid">
-              <article className="insight-card">
-                <span>ML анализ</span>
-                <strong>{analysis ? `${analysis.anxiety_level}% • ${analysis.content_type}` : 'Ожидает запуска'}</strong>
-                <p>{analysis ? analysis.summary : 'SafeMind определит уровень тревожности и тип контента.'}</p>
-              </article>
-              <article className="insight-card">
-                <span>Прогноз времени</span>
-                <strong>{prediction ? secondsToLabel(prediction.predicted_time) : 'Нет прогноза'}</strong>
-                <p>{prediction ? prediction.recommendation : 'После анализа появится прогноз времени и совет.'}</p>
-              </article>
-            </div>
-          </article>
-
-          <article className="panel">
-            <div className="panel-head">
-              <p className="section-label">Behavior Summary</p>
-              <h2>Общий прогноз</h2>
-            </div>
-            <p className="summary-copy">{general.recommendation}</p>
-            <div className="focus-list">
-              {general.focus_sites.map((site) => (
-                <article className="focus-card" key={site.site}>
-                  <div>
-                    <strong>{site.site}</strong>
-                    <span>{site.content_type}</span>
-                  </div>
-                  <p>{secondsToLabel(site.time_spent)}</p>
-                  <mark className={`tone-${anxietyTone(site.anxiety_level)}`}>{site.anxiety_level}%</mark>
-                </article>
-              ))}
-            </div>
-          </article>
-        </section>
-
-        <section className="charts-grid">
-          <article className="panel chart-panel">
-            <div className="panel-head">
-              <p className="section-label">Time Share</p>
-              <h2>Куда уходит внимание</h2>
-            </div>
-            {stats.sites.length ? <Doughnut data={doughnutData} options={{ plugins: { legend: { position: 'bottom' } } }} /> : <p className="empty-copy">Пока нет данных для диаграммы.</p>}
-          </article>
-
-          <article className="panel chart-panel">
-            <div className="panel-head">
-              <p className="section-label">Anxiety Map</p>
-              <h2>Тревожность по доменам</h2>
-            </div>
-            {stats.sites.length ? (
-              <Bar
-                data={barData}
-                options={{
-                  plugins: { legend: { display: false } },
-                  scales: { y: { min: 0, max: 100 } },
-                }}
-              />
-            ) : (
-              <p className="empty-copy">Сначала отправьте несколько анализов сайта.</p>
-            )}
-          </article>
-
-          <article className="panel chart-panel full-width">
-            <div className="panel-head">
-              <p className="section-label">Recent Sessions</p>
-              <h2>Последние визиты</h2>
-            </div>
-            {stats.recent_visits.length ? (
-              <Line
-                data={lineData}
-                options={{
-                  plugins: { legend: { display: false } },
-                  scales: {
-                    y: {
-                      title: { display: true, text: 'Минуты' },
-                    },
-                  },
-                }}
-              />
-            ) : (
-              <p className="empty-copy">Линия появится после первых сохраненных сессий.</p>
-            )}
-          </article>
-        </section>
-
-        <section className="workspace">
-          <article className="panel">
-            <div className="panel-head">
-              <p className="section-label">Settings</p>
-              <h2>Лимиты и уведомления</h2>
-            </div>
-
-            <label className="settings-field">
-              Частота уведомлений, минут
-              <input
-                type="number"
-                min="5"
-                max="240"
-                value={settings.notification_frequency_minutes}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    notification_frequency_minutes: Number(event.target.value),
-                  }))
-                }
-              />
-            </label>
-
-            <div className="limit-editor">
-              <label>
-                Домен
-                <input
-                  value={limitDraft.site}
-                  onChange={(event) => setLimitDraft((current) => ({ ...current, site: event.target.value }))}
-                  placeholder="news.example.com"
-                />
-              </label>
-              <label>
-                Лимит, сек
-                <input
-                  type="number"
-                  min="60"
-                  value={limitDraft.time_limit_seconds}
-                  onChange={(event) => setLimitDraft((current) => ({ ...current, time_limit_seconds: event.target.value }))}
-                />
-              </label>
-              <button type="button" onClick={addLimitDraft}>
-                Добавить лимит
-              </button>
-            </div>
-
-            <div className="limit-list">
-              {settings.site_limits.map((limit) => (
-                <article className="limit-chip" key={limit.site}>
-                  <div>
-                    <strong>{limit.site}</strong>
-                    <span>{secondsToLabel(limit.time_limit_seconds)}</span>
-                  </div>
-                  <button type="button" onClick={() => removeLimit(limit.site)}>
-                    Удалить
-                  </button>
-                </article>
-              ))}
-            </div>
-
-            <button className="primary-action" type="button" onClick={handleSaveSettings} disabled={savingSettings}>
-              {savingSettings ? 'Сохраняю...' : 'Сохранить настройки'}
-            </button>
-          </article>
-
-          <article className="panel">
-            <div className="panel-head">
-              <p className="section-label">Moodboard</p>
-              <h2>Оформление интерфейса</h2>
-            </div>
-            <div className="moodboard-list">
-              {moodboards.map((moodboard) => (
-                <button
-                  type="button"
-                  key={moodboard.id}
-                  className={`moodboard-card ${settings.moodboard === moodboard.id ? 'is-active' : ''}`}
-                  onClick={() => setSettings((current) => ({ ...current, moodboard: moodboard.id }))}
-                >
-                  <strong>{moodboard.title}</strong>
-                  <span>{moodboard.description}</span>
-                </button>
-              ))}
-            </div>
-          </article>
-        </section>
-
-        <section className="panel table-panel">
-          <div className="panel-head">
-            <p className="section-label">Tracked Sites</p>
-            <h2>Статистика по сайтам</h2>
-          </div>
-          {loading ? (
-            <p className="empty-copy">Загружаю SafeMind дашборд...</p>
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Сайт</th>
-                    <th>Время</th>
-                    <th>Тревожность</th>
-                    <th>Визиты</th>
-                    <th>Тип</th>
-                    <th>Лимит</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.sites.map((site) => (
-                    <tr key={site.site}>
-                      <td>{site.site}</td>
-                      <td>{secondsToLabel(site.time_spent)}</td>
-                      <td>
-                        <span className={`anxiety-pill ${anxietyTone(site.anxiety_level)}`}>{site.anxiety_level}%</span>
-                      </td>
-                      <td>{site.visits}</td>
-                      <td>{site.content_type}</td>
-                      <td>{site.recommended_limit ? secondsToLabel(site.recommended_limit) : 'Не задан'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        <ErrorBoundary
+          fallback={
+            <section className="panel table-panel">
+              <div className="panel-head">
+                <p className="section-label">SafeMind</p>
+                <h2>Главная страница загружена, но аналитический модуль ниже недоступен</h2>
+              </div>
+              <p className="summary-copy">
+                Верхняя часть страницы и основной контент работают. Проблема локализована в модуле аналитики и больше не скрывает весь экран.
+              </p>
+            </section>
+          }
+        >
+          <Suspense
+            fallback={
+              <section className="panel table-panel">
+                <div className="panel-head">
+                  <p className="section-label">SafeMind</p>
+                  <h2>Загружаю аналитику</h2>
+                </div>
+                <p className="summary-copy">Главная страница уже доступна. Виджеты и графики подключаются отдельно.</p>
+              </section>
+            }
+          >
+            <DashboardSections
+              redirectMessage={redirectMessage}
+              setRedirectMessage={setRedirectMessage}
+              error={error}
+              general={general}
+              stats={stats}
+              loading={loading}
+              siteForm={siteForm}
+              setSiteForm={setSiteForm}
+              handleAnalyzeSubmit={handleAnalyzeSubmit}
+              analysis={analysis}
+              prediction={prediction}
+              secondsToLabel={secondsToLabel}
+              settings={settings}
+              setSettings={setSettings}
+              limitDraft={limitDraft}
+              setLimitDraft={setLimitDraft}
+              addLimitDraft={addLimitDraft}
+              removeLimit={removeLimit}
+              savingSettings={savingSettings}
+              handleSaveSettings={handleSaveSettings}
+              moodboards={moodboards}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </>
   );

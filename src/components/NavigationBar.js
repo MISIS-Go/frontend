@@ -1,25 +1,46 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import './NavigationBar.css';
 
 const NavigationBar = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const navItems = [
+    { label: 'О расширении', hash: 'extension' },
+    { label: 'Практики', hash: 'analytics' },
+    { label: 'Статистика', hash: 'analytics' },
+    { label: 'Таймер', hash: 'break-room' },
+    { label: 'Управление', hash: 'analytics' },
+    { label: 'Профиль', hash: 'moodboard' },
+  ];
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    window.location.hash = '';
   };
 
   return (
     <nav className="navbar">
-      <div className="navbar-container">
+      <div className={`navbar-container ${user ? 'has-user' : 'is-guest'}`}>
         <div className="navbar-brand">
           <h1>SafeMind</h1>
           <span className="navbar-subtitle">Digital Wellbeing</span>
         </div>
-        
+
+        <div className="navbar-links" aria-label="Навигация SafeMind">
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className="navbar-link"
+              onClick={() => {
+                window.location.hash = item.hash;
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
         <div className="navbar-user">
           {user ? (
             <>
@@ -35,26 +56,7 @@ const NavigationBar = () => {
               </button>
             </>
           ) : (
-            <div className="auth-links">
-              <button 
-                className="nav-btn"
-                onClick={() => {
-                  navigate('/');
-                  window.location.hash = 'analytics';
-                }}
-              >
-                Аналитика
-              </button>
-              <button 
-                className="nav-btn primary"
-                onClick={() => {
-                  navigate('/');
-                  window.location.hash = 'moodboard';
-                }}
-              >
-                Moodboard
-              </button>
-            </div>
+            null
           )}
         </div>
       </div>
