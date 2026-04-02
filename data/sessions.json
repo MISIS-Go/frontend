@@ -1,0 +1,5 @@
+{
+  "legacy": true,
+  "note": "The old sessions.json remains as a reminder that the project grew out of an MVP.",
+  "currentSourceOfTruth": "runtime services"
+}

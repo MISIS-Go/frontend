@@ -1,0 +1,7 @@
+target
+game-core/target
+.git
+.DS_Store
+*.log
+dist
+node_modules

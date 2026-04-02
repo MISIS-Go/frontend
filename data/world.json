@@ -1,0 +1,25 @@
+{
+  "worldName": "Bezum",
+  "rooms": [
+    {
+      "id": "sunny-plaza",
+      "title": "Sunny Plaza",
+      "blurb": "The central plaza with a fountain, chat, and plenty of rumors."
+    },
+    {
+      "id": "notes-nook",
+      "title": "Notes Nook",
+      "blurb": "A notes corner with markdown, LaTeX, and a strangely trusting renderer."
+    },
+    {
+      "id": "bank-boulevard",
+      "title": "Bank Boulevard",
+      "blurb": "A place with coinz, a shop counter, and an SSRF-friendly preview."
+    },
+    {
+      "id": "arcade-attic",
+      "title": "Arcade Attic",
+      "blurb": "Mini-games, popcorn, and hints for the exploit chain."
+    }
+  ]
+}
