@@ -16,11 +16,12 @@ const stickers = [
 let state = {
   me: null,
   player: null,
-  world: { width: 2800, height: 1800, hotspots: [], players: [], buildings: [], obstacles: [] },
+  world: { width: 1086, height: 768, hotspots: [], players: [], buildings: [], obstacles: [] },
   chat: [],
   notes: [],
   games: [],
   flags: [],
+  graffiti: null,
   wallet: { balance: 0, inventory: [] },
 };
 
@@ -31,12 +32,15 @@ let localMotion = null;
 let activeNote = null;
 let activeModal = null;
 let profileDraft = null;
+let arcadeSession = null;
+let flappyKeyBound = false;
 const spriteCache = new Map();
 const remoteMotion = new Map();
 const camera = { x: 0, y: 0, width: 1280, height: 760, targetX: 0, targetY: 0 };
 let lastMoveSentAt = 0;
 const pressedKeys = new Set();
 let controlsBound = false;
+const mapBackground = cachedImage("/assets/map/full.png");
 
 function hardReload() {
   window.location.assign("/");
@@ -76,14 +80,18 @@ function avatarSrc(profileOrPlayer) {
   return profileOrPlayer?.customAvatar || stickerPath(profileOrPlayer?.avatar || "rfcyan");
 }
 
-function spriteFor(entity) {
-  const src = avatarSrc(entity);
+function cachedImage(src) {
   if (spriteCache.has(src)) return spriteCache.get(src);
   const image = new Image();
   image.src = src;
   image.onload = () => drawWorld();
   spriteCache.set(src, image);
   return image;
+}
+
+function spriteFor(entity) {
+  const src = avatarSrc(entity);
+  return cachedImage(src);
 }
 
 function playerById(userId) {
@@ -244,7 +252,7 @@ function authShell() {
       <div class="auth-billboard">
         <p class="eyebrow">Cartoon CTF MMO</p>
         <h1>Bezum</h1>
-        <p class="lede">A large map, realtime players, clickable buildings, notes, a bank, mini-games, and an intentionally vulnerable profile.</p>
+        <p class="lede">A large map, realtime players, clickable buildings, notes, a bank, mini-games, and a customizable profile.</p>
         <div class="sticker-row">
           ${stickers.slice(0, 5).map((name) => `<img src="${stickerPath(name)}" alt="" />`).join("")}
         </div>
@@ -304,6 +312,8 @@ function modalTitle(kind) {
     ? "Notes House"
     : kind === "bank"
     ? "Popcorn Bank"
+    : kind === "wall"
+    ? "Graffiti Wall"
     : kind === "games"
     ? "Arcade Pier"
     : kind === "flags"
@@ -364,7 +374,7 @@ function bankModal() {
       <button type="submit">Transfer</button>
     </form>
     <form id="preview-form" class="stack">
-      <input name="url" placeholder="http://inmemory:8005/internal/flags" />
+      <input name="url" placeholder="http://bank:8003/health" />
       <button type="submit">Preview URL</button>
     </form>
     <pre id="preview-log" class="preview-log"></pre>
@@ -374,7 +384,24 @@ function bankModal() {
 function gamesModal() {
   return `
     <div class="stack">
-      ${(state.games || []).map((game) => `
+      <article class="game-card flappy-card">
+        <div>
+          <h3>Flappy Sky</h3>
+          <p>Tap or press space to keep the bird in the air. A clean run starts at 10 points.</p>
+        </div>
+        <div class="flappy-shell">
+          <canvas id="flappy-canvas" class="flappy-canvas" width="520" height="220"></canvas>
+          <div class="flappy-hud">
+            <strong id="flappy-score">0</strong>
+            <span id="flappy-status">Press Start</span>
+          </div>
+          <div class="profile-actions">
+            <button id="flappy-start" type="button">Start Run</button>
+            <button id="flappy-jump" type="button">Flap</button>
+          </div>
+        </div>
+      </article>
+      ${(state.games || []).filter((game) => game.id !== "flappy-sky").map((game) => `
         <article class="game-card">
           <div>
             <h3>${game.title}</h3>
@@ -393,7 +420,7 @@ function gamesModal() {
 function flagsModal() {
   return `
     <div class="stack">
-      <p class="lede small">Submit flags here. The server throttles attempts and locks brute force.</p>
+      <p class="lede small">Submit flags here. The server throttles repeated attempts.</p>
       <div class="flag-grid">
         ${(state.flags || []).map((flag) => `
           <div class="flag-card ${flag.solved ? "solved" : ""}">
@@ -460,12 +487,37 @@ function profileModal() {
         </div>
       </div>
       <div class="profile-side">
-        <p class="lede small">You can draw right here. It is stored as a data URL without proper sanitization.</p>
+        <p class="lede small">You can draw right here and save the result as part of your profile.</p>
         <canvas id="paint-canvas" class="paint-canvas" width="280" height="280"></canvas>
         <div class="profile-actions">
           <button id="paint-use" type="button">Use drawing</button>
           <button id="paint-reset" type="button">Clear canvas</button>
         </div>
+      </div>
+    </div>
+  `;
+}
+
+function wallModal() {
+  return `
+    <div class="profile-grid wall-grid">
+      <div class="profile-side">
+        <div class="avatar-stage wall-preview">
+          ${state.graffiti ? `<img src="${state.graffiti}" alt="Shared wall art" />` : '<p class="lede small">The wall is still clean. Leave the first tag.</p>'}
+        </div>
+        <p class="lede small">This is a shared mural. Anyone on the map can repaint it.</p>
+        <label>
+          <span>Spray color</span>
+          <input id="wall-color" value="#ff7f98" />
+        </label>
+        <div class="profile-actions">
+          <button id="wall-save" type="button">Publish to wall</button>
+          <button id="wall-reset" type="button">Clear canvas</button>
+        </div>
+      </div>
+      <div class="profile-side">
+        <p class="lede small">Draw directly on the wall board and save it for everyone in the plaza.</p>
+        <canvas id="wall-canvas" class="paint-canvas wall-canvas" width="640" height="320"></canvas>
       </div>
     </div>
   `;
@@ -477,6 +529,8 @@ function modalMarkup() {
     ? notesModal()
     : activeModal.kind === "bank"
     ? bankModal()
+    : activeModal.kind === "wall"
+    ? wallModal()
     : activeModal.kind === "games"
     ? gamesModal()
     : activeModal.kind === "flags"
@@ -710,8 +764,8 @@ function updateCamera() {
     camera.targetY = y - (camera.height - marginY);
   }
 
-  camera.targetX = clamp(camera.targetX, 0, state.world.width - camera.width);
-  camera.targetY = clamp(camera.targetY, 0, state.world.height - camera.height);
+  camera.targetX = clamp(camera.targetX, 0, Math.max(0, state.world.width - camera.width));
+  camera.targetY = clamp(camera.targetY, 0, Math.max(0, state.world.height - camera.height));
   camera.x += (camera.targetX - camera.x) * 0.12;
   camera.y += (camera.targetY - camera.y) * 0.12;
 }
@@ -731,139 +785,11 @@ function roundRect(ctx, x, y, width, height, radius) {
 }
 
 function drawBackground(ctx) {
-  ctx.fillStyle = "#89daff";
+  ctx.fillStyle = "#8cd8ff";
   ctx.fillRect(0, 0, state.world.width, state.world.height);
-
-  const cloudSpots = [
-    [280, 190, 94],
-    [760, 120, 74],
-    [1880, 170, 88],
-    [2410, 250, 70],
-  ];
-  for (const [x, y, r] of cloudSpots) {
-    ctx.fillStyle = "rgba(255,255,255,0.72)";
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.arc(x + r * 0.7, y + 8, r * 0.76, 0, Math.PI * 2);
-    ctx.arc(x - r * 0.65, y + 14, r * 0.68, 0, Math.PI * 2);
-    ctx.fill();
+  if (mapBackground.complete && mapBackground.naturalWidth > 0) {
+    ctx.drawImage(mapBackground, 0, 0, state.world.width, state.world.height);
   }
-
-  for (let i = 0; i < 18; i += 1) {
-    ctx.fillStyle = i % 2 === 0 ? "#f9e09d" : "#9cebaf";
-    ctx.fillRect(i * 160, 1180 + (i % 3) * 20, 190, 620);
-  }
-
-  ctx.fillStyle = "#f3d8a5";
-  roundRect(ctx, 720, 810, 1180, 430, 130);
-  ctx.fill();
-  ctx.fillStyle = "#dfbe70";
-  roundRect(ctx, 780, 980, 1060, 120, 54);
-  ctx.fill();
-  ctx.fillStyle = "#e8cb88";
-  roundRect(ctx, 1160, 320, 110, 650, 42);
-  ctx.fill();
-  roundRect(ctx, 1820, 640, 110, 640, 42);
-  ctx.fill();
-  ctx.fillStyle = "#bfefff";
-  roundRect(ctx, 180, 900, 560, 360, 120);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.44)";
-  ctx.lineWidth = 10;
-  for (let x = 860; x < 1760; x += 150) {
-    ctx.beginPath();
-    ctx.moveTo(x, 1040);
-    ctx.lineTo(x + 82, 1040);
-    ctx.stroke();
-  }
-  ctx.fillStyle = "#65be72";
-  roundRect(ctx, 2220, 340, 330, 330, 80);
-  ctx.fill();
-
-  for (const [x, y] of [[210, 760], [580, 760], [2080, 1460], [2280, 760], [2480, 760], [2500, 1230]]) {
-    ctx.fillStyle = "#4ea95d";
-    ctx.beginPath();
-    ctx.arc(x, y, 54, 0, Math.PI * 2);
-    ctx.arc(x + 30, y - 24, 46, 0, Math.PI * 2);
-    ctx.arc(x - 30, y - 18, 42, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#7b5135";
-    roundRect(ctx, x - 10, y + 30, 20, 56, 10);
-    ctx.fill();
-  }
-
-  ctx.strokeStyle = "#d7b16c";
-  ctx.lineWidth = 8;
-  for (let x = 1080; x < 1620; x += 74) {
-    ctx.beginPath();
-    ctx.moveTo(x, 760);
-    ctx.lineTo(x, 860);
-    ctx.stroke();
-  }
-  ctx.beginPath();
-  ctx.moveTo(1050, 760);
-  ctx.lineTo(1650, 760);
-  ctx.stroke();
-}
-
-function drawBuilding(ctx, building, active) {
-  ctx.save();
-  ctx.shadowColor = "rgba(23,50,76,0.18)";
-  ctx.shadowBlur = 28;
-  ctx.shadowOffsetY = 18;
-  ctx.fillStyle = building.bodyColor;
-  ctx.strokeStyle = active ? "#ff7f98" : "rgba(23,50,76,0.22)";
-  ctx.lineWidth = active ? 6 : 3;
-  roundRect(ctx, building.x, building.y + 62, building.width, building.height - 62, 26);
-  ctx.fill();
-  ctx.stroke();
-  ctx.shadowColor = "transparent";
-  ctx.fillStyle = building.roofColor;
-  ctx.beginPath();
-  ctx.moveTo(building.x - 12, building.y + 88);
-  ctx.lineTo(building.x + building.width / 2, building.y);
-  ctx.lineTo(building.x + building.width + 12, building.y + 88);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
-  ctx.beginPath();
-  ctx.moveTo(building.x + 30, building.y + 84);
-  ctx.lineTo(building.x + building.width / 2, building.y + 22);
-  ctx.lineTo(building.x + building.width / 2 + 36, building.y + 46);
-  ctx.lineTo(building.x + 54, building.y + 98);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  for (let row = 0; row < 2; row += 1) {
-    for (let col = 0; col < 3; col += 1) {
-      roundRect(ctx, building.x + 34 + col * 78, building.y + 108 + row * 64, 44, 38, 12);
-      ctx.fill();
-    }
-  }
-  ctx.fillStyle = "#7b5135";
-  roundRect(ctx, building.x + building.width / 2 - 34, building.y + building.height - 88, 68, 88, 18);
-  ctx.fill();
-  ctx.fillStyle = "#f3d591";
-  ctx.beginPath();
-  ctx.arc(building.x + building.width / 2 + 18, building.y + building.height - 42, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#f4f4f4";
-  roundRect(ctx, building.x + building.width - 72, building.y + 46, 26, 92, 14);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.beginPath();
-  ctx.arc(building.x + building.width - 58, building.y + 34, 22, 0, Math.PI * 2);
-  ctx.arc(building.x + building.width - 36, building.y + 26, 16, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#72b364";
-  ctx.beginPath();
-  ctx.arc(building.x + 26, building.y + building.height - 10, 20, 0, Math.PI * 2);
-  ctx.arc(building.x + building.width - 26, building.y + building.height - 10, 20, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#17324c";
-  ctx.font = "700 34px Trebuchet MS";
-  ctx.fillText(building.label, building.x + 22, building.y + building.height - 30);
-  ctx.restore();
 }
 
 function drawWorld() {
@@ -876,9 +802,17 @@ function drawWorld() {
   ctx.save();
   ctx.translate(-camera.x, -camera.y);
   drawBackground(ctx);
-
-  for (const building of state.world.buildings || []) {
-    drawBuilding(ctx, building, activeModal && building.hotspotId === `hotspot-${activeModal.kind}`);
+  if (state.graffiti) {
+    const wallArt = cachedImage(state.graffiti);
+    if (wallArt.complete) {
+      ctx.save();
+      ctx.beginPath();
+      roundRect(ctx, 438, 86, 238, 128, 12);
+      ctx.clip();
+      ctx.globalAlpha = 0.94;
+      ctx.drawImage(wallArt, 438, 86, 238, 128);
+      ctx.restore();
+    }
   }
 
   for (const player of state.world.players || []) {
@@ -920,10 +854,14 @@ function drawMinimap() {
 
   ctx.fillStyle = "#90dbff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "#f0d18b";
-  for (const building of state.world.buildings || []) {
-    ctx.fillRect(building.x * scaleX, building.y * scaleY, building.width * scaleX, building.height * scaleY);
+  if (mapBackground.complete && mapBackground.naturalWidth > 0) {
+    ctx.drawImage(mapBackground, 0, 0, canvas.width, canvas.height);
+  }
+  if (state.graffiti) {
+    const wallArt = cachedImage(state.graffiti);
+    if (wallArt.complete) {
+      ctx.drawImage(wallArt, 438 * scaleX, 86 * scaleY, 238 * scaleX, 128 * scaleY);
+    }
   }
 
   ctx.fillStyle = "rgba(28, 66, 92, 0.28)";
@@ -1007,11 +945,12 @@ function bindWorldShell() {
       state = {
         me: null,
         player: null,
-        world: { width: 2800, height: 1800, hotspots: [], players: [], buildings: [], obstacles: [] },
+        world: { width: 1086, height: 768, hotspots: [], players: [], buildings: [], obstacles: [] },
         chat: [],
         notes: [],
         games: [],
         flags: [],
+        graffiti: null,
         wallet: { balance: 0, inventory: [] },
       };
       remoteMotion.clear();
@@ -1097,15 +1036,34 @@ function renderShop() {
 }
 
 function bindPainter() {
-  const canvas = document.getElementById("paint-canvas");
+  bindSharedPainter({
+    canvasId: "paint-canvas",
+    colorInputId: "profile-color",
+    initialImage: null,
+  });
+}
+
+function bindSharedPainter({ canvasId, colorInputId, initialImage }) {
+  const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.lineCap = "round";
   ctx.lineWidth = 12;
-  ctx.strokeStyle = profileDraft?.color || "#55c1ff";
+  ctx.strokeStyle = document.getElementById(colorInputId)?.value || profileDraft?.color || "#55c1ff";
   let painting = false;
+
+  if (initialImage) {
+    const seed = cachedImage(initialImage);
+    if (seed.complete) {
+      ctx.drawImage(seed, 0, 0, canvas.width, canvas.height);
+    } else {
+      seed.onload = () => {
+        ctx.drawImage(seed, 0, 0, canvas.width, canvas.height);
+      };
+    }
+  }
 
   const coords = (event) => {
     const rect = canvas.getBoundingClientRect();
@@ -1124,7 +1082,7 @@ function bindPainter() {
 
   canvas.addEventListener("pointermove", (event) => {
     if (!painting) return;
-    ctx.strokeStyle = document.getElementById("profile-color").value || "#55c1ff";
+    ctx.strokeStyle = document.getElementById(colorInputId)?.value || "#55c1ff";
     const point = coords(event);
     ctx.lineTo(point.x, point.y);
     ctx.stroke();
@@ -1217,7 +1175,10 @@ function bindModal() {
     });
     document.querySelectorAll("[data-buy]").forEach((button) => {
       button.addEventListener("click", async () => {
-        await request("/api/bank/buy", { method: "POST", body: JSON.stringify({ itemId: button.dataset.buy }) });
+        const payload = await request("/api/bank/buy", { method: "POST", body: JSON.stringify({ itemId: button.dataset.buy }) });
+        if (payload.surpriseHint?.text) {
+          alert(`Arcade rumor found: ${payload.surpriseHint.text}`);
+        }
         await bootstrap();
         activeModal = { kind: "bank", hotspotId: "hotspot-bank" };
         renderModal();
@@ -1230,11 +1191,38 @@ function bindModal() {
       button.addEventListener("click", async () => {
         const score = document.querySelector(`[data-score="${button.dataset.play}"]`).value;
         const payload = await request(`/api/games/play/${button.dataset.play}`, { method: "POST", body: JSON.stringify({ score }) });
-        alert(`${payload.gameId}: reward ${payload.reward}, hint: ${payload.hint}`);
+        alert(`${payload.gameId}: reward ${payload.reward}, ${payload.message}`);
         await bootstrap();
         activeModal = { kind: "games", hotspotId: "hotspot-games" };
         renderModal();
       });
+    });
+    bindFlappy();
+  }
+
+  if (activeModal?.kind === "wall") {
+    bindSharedPainter({
+      canvasId: "wall-canvas",
+      colorInputId: "wall-color",
+      initialImage: state.graffiti,
+    });
+    document.getElementById("wall-reset")?.addEventListener("click", () => {
+      const canvas = document.getElementById("wall-canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    });
+    document.getElementById("wall-save")?.addEventListener("click", async () => {
+      const canvas = document.getElementById("wall-canvas");
+      const payload = await request("/api/world/graffiti", {
+        method: "POST",
+        body: JSON.stringify({ image: canvas.toDataURL("image/png") }),
+      });
+      state.graffiti = payload.graffiti || null;
+      activeModal = { kind: "wall", hotspotId: "hotspot-wall" };
+      renderModal();
+      drawWorld();
+      drawMinimap();
     });
   }
 
@@ -1309,6 +1297,139 @@ function render() {
     return;
   }
   worldShell();
+}
+
+function bindFlappy() {
+  const canvas = document.getElementById("flappy-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const scoreNode = document.getElementById("flappy-score");
+  const statusNode = document.getElementById("flappy-status");
+
+  const draw = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#97dcff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffe394";
+    ctx.fillRect(0, canvas.height - 34, canvas.width, 34);
+
+    if (!arcadeSession) {
+      ctx.fillStyle = "#17324c";
+      ctx.font = "700 24px Trebuchet MS";
+      ctx.fillText("Flappy Sky", 24, 34);
+      return;
+    }
+
+    for (const pipe of arcadeSession.pipes) {
+      ctx.fillStyle = "#53bb67";
+      ctx.fillRect(pipe.x, 0, pipe.width, pipe.gapY);
+      ctx.fillRect(pipe.x, pipe.gapY + pipe.gapHeight, pipe.width, canvas.height);
+    }
+
+    ctx.fillStyle = "#ffb355";
+    ctx.beginPath();
+    ctx.arc(arcadeSession.bird.x, arcadeSession.bird.y, arcadeSession.bird.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#17324c";
+    ctx.beginPath();
+    ctx.arc(arcadeSession.bird.x + 5, arcadeSession.bird.y - 4, 3, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const finish = async () => {
+    if (!arcadeSession) return;
+    cancelAnimationFrame(arcadeSession.frame);
+    const finished = arcadeSession;
+    arcadeSession = null;
+    scoreNode.textContent = String(finished.score);
+    statusNode.textContent = finished.score >= 10 ? "Milestone reached" : "Run ended";
+    draw();
+    const payload = await request("/api/games/play/flappy-sky", {
+      method: "POST",
+      body: JSON.stringify({ score: Math.min(100, finished.score) }),
+    });
+    alert(`flappy-sky: reward ${payload.reward}, ${payload.message}`);
+    await bootstrap();
+    activeModal = { kind: "games", hotspotId: "hotspot-games" };
+    renderModal();
+  };
+
+  const flap = () => {
+    if (!arcadeSession) return;
+    arcadeSession.bird.velocity = -5.8;
+  };
+
+  const tick = () => {
+    if (!arcadeSession) return;
+    arcadeSession.bird.velocity += 0.28;
+    arcadeSession.bird.y += arcadeSession.bird.velocity;
+
+    if (arcadeSession.spawnIn <= 0) {
+      arcadeSession.spawnIn = 102;
+      const gapHeight = 66;
+      const gapY = 28 + Math.random() * (canvas.height - gapHeight - 66);
+      arcadeSession.pipes.push({ x: canvas.width + 20, width: 54, gapY, gapHeight, passed: false });
+    } else {
+      arcadeSession.spawnIn -= 1;
+    }
+
+    for (const pipe of arcadeSession.pipes) {
+      pipe.x -= 2.6;
+      if (!pipe.passed && pipe.x + pipe.width < arcadeSession.bird.x) {
+        pipe.passed = true;
+        arcadeSession.score += 1;
+        scoreNode.textContent = String(arcadeSession.score);
+        statusNode.textContent = arcadeSession.score >= 10 ? "Milestone unlocked" : "Keep flapping";
+      }
+
+      const withinX = arcadeSession.bird.x + arcadeSession.bird.radius > pipe.x &&
+        arcadeSession.bird.x - arcadeSession.bird.radius < pipe.x + pipe.width;
+      const hitsTop = arcadeSession.bird.y - arcadeSession.bird.radius < pipe.gapY;
+      const hitsBottom = arcadeSession.bird.y + arcadeSession.bird.radius > pipe.gapY + pipe.gapHeight;
+      if (withinX && (hitsTop || hitsBottom)) {
+        finish();
+        return;
+      }
+    }
+
+    arcadeSession.pipes = arcadeSession.pipes.filter((pipe) => pipe.x + pipe.width > -20);
+
+    if (arcadeSession.bird.y < 0 || arcadeSession.bird.y > canvas.height - 34) {
+      finish();
+      return;
+    }
+
+    draw();
+    arcadeSession.frame = requestAnimationFrame(tick);
+  };
+
+  document.getElementById("flappy-start")?.addEventListener("click", () => {
+    if (arcadeSession) cancelAnimationFrame(arcadeSession.frame);
+    arcadeSession = {
+      score: 0,
+      spawnIn: 70,
+      frame: 0,
+      bird: { x: 110, y: 120, radius: 14, velocity: 0 },
+      pipes: [],
+    };
+    scoreNode.textContent = "0";
+    statusNode.textContent = "Run started";
+    draw();
+    arcadeSession.frame = requestAnimationFrame(tick);
+  });
+
+  document.getElementById("flappy-jump")?.addEventListener("click", flap);
+  if (!flappyKeyBound) {
+    flappyKeyBound = true;
+    window.addEventListener("keydown", (event) => {
+      if (activeModal?.kind !== "games") return;
+      if (event.code === "Space") {
+        flap();
+        event.preventDefault();
+      }
+    });
+  }
+  draw();
 }
 
 bootstrap().catch(() => {
